@@ -20,9 +20,6 @@ class UNetVideo(UNet2DConditionModel):
         self.cross_attention_dim = cross_attention_dim
         self.flatten_unet()
         self.add_cross_frame_attention()
-        for name, module in self.named_modules():
-            if isinstance(module, CrossFrameTransformer2DModel):
-                print(name, type(module), sum(param.numel() for param in module.parameters()))
         
         
     def flatten_unet(self):

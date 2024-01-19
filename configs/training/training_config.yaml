@@ -1,0 +1,34 @@
+output_dir: checkpoints
+device: cuda
+lr_scheduler_name: cosine
+enable_gradient_checkpointing: True
+enable_xformers_memory_efficient_attention: True
+mixed_precision: fp16
+lr_warmup_steps: 1
+gradient_accumulation_steps: 4
+clip_grad_norm: 1.
+batch_size: 2
+num_epochs: 100
+checkpoint_epochs: 2
+load_checkpoint: True
+checkpoint_path: checkpoints/checkpoint-epoch-2.pth
+
+optimizer:
+  learning_rate: 1.e-4
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_epsilon: 1.e-8
+  adam_weight_decay: 1.e-4
+
+data:
+  csv_path: /home/skytim/data/webvid/results_2M_val.csv
+  video_folder: /home/skytim/data/webvid/data/videos/
+  height: 256
+  width: 256
+  num_frames: 8
+  frame_stride: 4
+  dataloader_num_worker: 4
+
+pretrains:
+  sd_pretrains_folder: pretrains/SD/stable-diffusion-v1-5/
+  lcm_pretrains_path: pretrains/LCM/lcm_lora_sd15.safetensors

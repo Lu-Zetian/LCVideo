@@ -10,11 +10,14 @@ from decord import VideoReader
 
 class WebVid(Dataset):
     def __init__(
-            self,
-            csv_path, video_folder,
-            sample_size=256, sample_stride=4, sample_n_frames=16,
-            is_image=False,
-        ):
+        self,
+        csv_path, 
+        video_folder,
+        sample_size=256, 
+        sample_stride=4, 
+        sample_n_frames=16,
+        is_image=False,
+    ):
         print(f"loading annotations from {csv_path} ...")
         with open(csv_path, 'r') as csvfile:
             self.dataset = list(csv.DictReader(csvfile))[:2]
@@ -29,7 +32,7 @@ class WebVid(Dataset):
         sample_size = tuple(sample_size) if not isinstance(sample_size, int) else (sample_size, sample_size)
         self.pixel_transforms = transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            transforms.Resize(sample_size[0]),
+            transforms.Resize(sample_size[0], antialias=True),
             transforms.CenterCrop(sample_size),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
         ])
