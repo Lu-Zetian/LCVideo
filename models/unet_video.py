@@ -14,10 +14,16 @@ from models.unet_video_block import FlattenDownsample2D, FlattenUpsample2D, Cros
 
 
 class UNetVideo(UNet2DConditionModel):
-    def __init__(self, unet: UNet2DConditionModel, cross_attention_dim: int = 768):
+    def __init__(
+        self, 
+        unet: UNet2DConditionModel, 
+        cross_attention_dim: int = 768, 
+        max_num_frames: int = 32
+    ):
         self.__dict__.update(unet.__dict__)
         self.load_state_dict(unet.state_dict())
         self.cross_attention_dim = cross_attention_dim
+        self.max_num_frames = max_num_frames
         self.flatten_unet()
         self.add_cross_frame_attention()
         
@@ -67,7 +73,8 @@ class UNetVideo(UNet2DConditionModel):
                 self.down_blocks[i] = CrossAttnVideoDownBlock2D(
                     down_block, 
                     cross_attention_dim=self.cross_attention_dim, 
-                    attention_head_dim=32, 
+                    attention_head_dim=64, 
+                    max_num_frames=self.max_num_frames,
                 )
         
         for i, up_block in enumerate(self.up_blocks):
@@ -75,14 +82,16 @@ class UNetVideo(UNet2DConditionModel):
                 self.up_blocks[i] = CrossAttnVideoUpBlock2D(
                     up_block, 
                     cross_attention_dim=self.cross_attention_dim, 
-                    attention_head_dim=32, 
+                    attention_head_dim=64, 
+                    max_num_frames=self.max_num_frames,
                 )
             
         if isinstance(self.mid_block, UNetMidBlock2DCrossAttn):
             self.mid_block = CrossAttnVideoMidBlock2D(
                 self.mid_block, 
                 cross_attention_dim=self.cross_attention_dim, 
-                attention_head_dim=32, 
+                attention_head_dim=64, 
+                max_num_frames=self.max_num_frames,
             )
         
         

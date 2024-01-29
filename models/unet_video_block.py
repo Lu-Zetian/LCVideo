@@ -41,7 +41,13 @@ class FlattenUpsample2D(Upsample2D):
     
     
 class CrossAttnVideoDownBlock2D(CrossAttnDownBlock2D):
-    def __init__(self, cross_attn: CrossAttnDownBlock2D, cross_attention_dim: int = 768, attention_head_dim: int = None):
+    def __init__(
+        self, 
+        cross_attn: CrossAttnDownBlock2D, 
+        cross_attention_dim: int = 768, 
+        attention_head_dim: int = None, 
+        max_num_frames: int = 32,
+    ):
         self.__dict__.update(cross_attn.__dict__)
         self.load_state_dict(cross_attn.state_dict())
         self.frame_attentions = nn.ModuleList()
@@ -51,6 +57,7 @@ class CrossAttnVideoDownBlock2D(CrossAttnDownBlock2D):
                 encoder_hidden_states_dim=cross_attention_dim,
                 num_attention_heads=self.attentions[i].num_attention_heads,
                 attention_head_dim=attention_head_dim or self.attentions[i].attention_head_dim,
+                num_positional_embeddings=max_num_frames,
             ))
             
     def forward(
@@ -131,7 +138,13 @@ class CrossAttnVideoDownBlock2D(CrossAttnDownBlock2D):
         
 
 class CrossAttnVideoUpBlock2D(CrossAttnUpBlock2D):
-    def __init__(self, cross_attn: CrossAttnUpBlock2D, cross_attention_dim: int = 768, attention_head_dim: int = None):
+    def __init__(
+        self, 
+        cross_attn: CrossAttnUpBlock2D, 
+        cross_attention_dim: int = 768, 
+        attention_head_dim: int = None, 
+        max_num_frames: int = 32,
+    ):
         self.__dict__.update(cross_attn.__dict__)
         self.load_state_dict(cross_attn.state_dict())
         self.frame_attentions = nn.ModuleList()
@@ -141,6 +154,7 @@ class CrossAttnVideoUpBlock2D(CrossAttnUpBlock2D):
                 encoder_hidden_states_dim=cross_attention_dim,
                 num_attention_heads=self.attentions[i].num_attention_heads,
                 attention_head_dim=attention_head_dim or self.attentions[i].attention_head_dim,
+                num_positional_embeddings=max_num_frames,
             ))
     
     def forward(
@@ -234,7 +248,13 @@ class CrossAttnVideoUpBlock2D(CrossAttnUpBlock2D):
         
         
 class CrossAttnVideoMidBlock2D(UNetMidBlock2DCrossAttn):
-    def __init__(self, cross_attn: UNetMidBlock2DCrossAttn, cross_attention_dim: int = 768, attention_head_dim: int = None):
+    def __init__(
+        self, 
+        cross_attn: UNetMidBlock2DCrossAttn, 
+        cross_attention_dim: int = 768, 
+        attention_head_dim: int = None, 
+        max_num_frames: int = 32,
+    ):
         self.__dict__.update(cross_attn.__dict__)
         self.load_state_dict(cross_attn.state_dict())
         self.frame_attentions = nn.ModuleList()
@@ -244,6 +264,7 @@ class CrossAttnVideoMidBlock2D(UNetMidBlock2DCrossAttn):
                 encoder_hidden_states_dim=cross_attention_dim,
                 num_attention_heads=self.attentions[i].num_attention_heads,
                 attention_head_dim=attention_head_dim or self.attentions[i].attention_head_dim,
+                num_positional_embeddings=max_num_frames,
             ))
             
     def forward(

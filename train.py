@@ -41,7 +41,11 @@ def main(args):
     # Model initialization
     pipe = DiffusionPipeline.from_pretrained(config.pretrains.sd_pretrains_folder)
     pipe.load_lora_weights(config.pretrains.lcm_pretrains_path)
-    unet = UNetVideo(pipe.unet)
+    unet = UNetVideo(
+        pipe.unet, 
+        cross_attention_dim=pipe.text_encoder.config.hidden_size, 
+        max_num_frames=config.data.max_num_frames
+    )
     vae = pipe.vae
     text_encoder = pipe.text_encoder
     tokenizer = pipe.tokenizer
@@ -49,9 +53,12 @@ def main(args):
     
     del pipe
     
+    vae.enable_slicing()
+    vae.enable_tiling()
+    
     if config.load_checkpoint:
         unet.load_state_dict(torch.load(config.checkpoint_path), strict=False)
-    
+        
     if config.enable_xformers_memory_efficient_attention:
         unet.enable_xformers_memory_efficient_attention()
     
@@ -121,7 +128,9 @@ def main(args):
                 videos = rearrange(videos, "b f c h w -> (b f) c h w")
                 latent_videos = vae.encode(videos).latent_dist
                 latent_videos = latent_videos.sample()
+                latent_videos = latent_videos * vae.config.scaling_factor
                 latent_videos = rearrange(latent_videos, "(b f) c h w -> b c f h w", f=video_length)
+                
                 prompt_ids = tokenizer(
                     text, max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
                 ).input_ids.to(config.device)
@@ -165,10 +174,12 @@ def main(args):
                 torch.save(state_dict, save_path)
     
     # Save model after training
-    save_path = os.path.join(config.output_dir, "unet_video.pth")
+    save_path = os.path.join(config.output_dir, config.output_name)
     state_dict = unet.state_dict()
     for param_tensor in unet.state_dict():
         if "frame_attentions" not in param_tensor:
+            del state_dict[param_tensor]
+        if "pos_embed" in param_tensor:
             del state_dict[param_tensor]
     torch.save(state_dict, save_path)
 

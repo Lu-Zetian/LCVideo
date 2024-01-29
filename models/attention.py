@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 from diffusers.models.transformer_2d import Transformer2DModel, Transformer2DModelOutput
-from diffusers.models.attention import TemporalBasicTransformerBlock, SkipFFTransformerBlock, FeedForward, GatedSelfAttentionDense, _chunked_feed_forward
+from diffusers.models.attention import FeedForward, GatedSelfAttentionDense, _chunked_feed_forward
 from diffusers.models.attention_processor import Attention
 from diffusers.models.lora import LoRACompatibleConv, LoRACompatibleLinear
 from diffusers.models.embeddings import ImagePositionalEmbeddings, PatchEmbed, PixArtAlphaTextProjection, SinusoidalPositionalEmbedding
@@ -58,6 +58,7 @@ class BasicCrossFrameTransformerBlock(nn.Module):
         num_attention_heads: int = 8,
         attention_head_dim: int = 32,
         dropout=0.0,
+        max_num_frames: Optional[int] = 24,
         cross_attention_dim: Optional[int] = None,
         activation_fn: str = "geglu",
         num_embeds_ada_norm: Optional[int] = None,
@@ -231,9 +232,6 @@ class BasicCrossFrameTransformerBlock(nn.Module):
         else:
             raise ValueError("Incorrect norm used")
 
-        if self.pos_embed is not None:
-            norm_hidden_states = self.pos_embed(norm_hidden_states)
-
         # 1. Retrieve lora scale.
         lora_scale = cross_attention_kwargs.get("scale", 1.0) if cross_attention_kwargs is not None else 1.0
 
@@ -263,6 +261,7 @@ class BasicCrossFrameTransformerBlock(nn.Module):
         # 3. Cross-Frame-Attention
         num_latent_pixels = hidden_states.shape[1]
         hidden_states = rearrange(hidden_states, "(b f) p c -> (b p) f c", f=num_frames)
+        
         if self.use_ada_layer_norm:
             norm_hidden_states = self.norm2(hidden_states, timestep)
         elif self.use_ada_layer_norm_zero or self.use_layer_norm:
@@ -274,7 +273,7 @@ class BasicCrossFrameTransformerBlock(nn.Module):
         else:
             raise ValueError("Incorrect norm")
 
-        if self.pos_embed is not None and self.use_ada_layer_norm_single is False:
+        if self.pos_embed is not None:
             norm_hidden_states = self.pos_embed(norm_hidden_states)
 
         attn_output = self.attn2(
@@ -330,6 +329,7 @@ class CrossFrameTransformer2DModel(ModelMixin, ConfigMixin):
         num_layers: int = 1,
         dropout: float = 0.0,
         norm_num_groups: int = 32,
+        num_positional_embeddings: int = 32, 
         sample_size: Optional[int] = None,
         num_vector_embeds: Optional[int] = None,
         patch_size: Optional[int] = None,
@@ -428,6 +428,8 @@ class CrossFrameTransformer2DModel(ModelMixin, ConfigMixin):
                     attention_head_dim=attention_head_dim,
                     dropout=dropout,
                     cross_attention_dim=encoder_hidden_states_dim, 
+                    positional_embeddings="sinusoidal", 
+                    num_positional_embeddings=num_positional_embeddings, 
                 )
                 for d in range(num_layers)
             ]
@@ -630,5 +632,3 @@ class CrossFrameTransformer2DModel(ModelMixin, ConfigMixin):
 
         output = rearrange(output, "(b f) c h w -> b c f h w", f=video_length)
         return output
-    
-    

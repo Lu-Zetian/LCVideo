@@ -20,7 +20,7 @@ class WebVid(Dataset):
     ):
         print(f"loading annotations from {csv_path} ...")
         with open(csv_path, 'r') as csvfile:
-            self.dataset = list(csv.DictReader(csvfile))[:2]
+            self.dataset = list(csv.DictReader(csvfile))
         self.length = len(self.dataset)
         print(f"data scale: {self.length}")
 
@@ -48,6 +48,7 @@ class WebVid(Dataset):
         if not self.is_image:
             clip_length = min(video_length, (self.sample_n_frames - 1) * self.sample_stride + 1)
             start_idx   = random.randint(0, video_length - clip_length)
+            start_idx = 0
             batch_index = np.linspace(start_idx, start_idx + clip_length - 1, self.sample_n_frames, dtype=int)
         else:
             batch_index = [random.randint(0, video_length - 1)]
