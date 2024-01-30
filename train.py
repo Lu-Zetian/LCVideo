@@ -1,6 +1,5 @@
 import torch
 from torch.optim import AdamW
-from torch.nn import MSELoss
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
 from diffusers import DiffusionPipeline
@@ -16,6 +15,8 @@ from multiprocessing import cpu_count
 
 from data.dataset import WebVid
 from models.unet_video import UNetVideo
+from models.loss import LCMLoss
+from utils.denoise_utils import predicted_original
 
 
 def main(args):
@@ -50,6 +51,9 @@ def main(args):
     text_encoder = pipe.text_encoder
     tokenizer = pipe.tokenizer
     noise_scheduler = LCMScheduler.from_config(pipe.scheduler.config)
+    
+    alpha_schedule = torch.sqrt(noise_scheduler.alphas_cumprod)
+    sigma_schedule = torch.sqrt(1 - noise_scheduler.alphas_cumprod)
     
     del pipe
     
@@ -87,6 +91,8 @@ def main(args):
     # Move to device
     vae = vae.to(config.device)
     text_encoder = text_encoder.to(config.device)
+    alpha_schedule = alpha_schedule.to(config.device)
+    sigma_schedule = sigma_schedule.to(config.device)
 
     # Training initialization
     trainable_params = list(filter(lambda p: p.requires_grad, unet.parameters()))
@@ -103,7 +109,7 @@ def main(args):
         num_warmup_steps=config.lr_warmup_steps,
         num_training_steps=(len(train_dataloader) * config.num_epochs),
     )
-    loss_fn = MSELoss()
+    loss_fn = LCMLoss()
     
     # Training Loop
     accelerator = Accelerator(
@@ -137,18 +143,30 @@ def main(args):
                 encoder_hidden_states = text_encoder(prompt_ids)[0]
                 
             noise = torch.randn_like(latent_videos)
-            timesteps = torch.randint(
+            timesteps1 = torch.randint(
                 0, 
                 noise_scheduler.config.num_train_timesteps, 
                 (config.batch_size,), 
                 device=latent_videos.device,
                 dtype=torch.int64, 
             )
-            noisy_latent_videos = noise_scheduler.add_noise(latent_videos, noise, timesteps)
+            timesteps2 = torch.randint(
+                0, 
+                noise_scheduler.config.num_train_timesteps, 
+                (config.batch_size,), 
+                device=latent_videos.device,
+                dtype=torch.int64, 
+            )
+            noisy_latent_videos1 = noise_scheduler.add_noise(latent_videos, noise, timesteps1)
+            noisy_latent_videos2 = noise_scheduler.add_noise(latent_videos, noise, timesteps2)
         
             with accelerator.accumulate(unet):
-                noise_pred = unet(noisy_latent_videos, timesteps, encoder_hidden_states, return_dict=False)[0]
-                loss = loss_fn(noise_pred, noise)
+                noise_pred1 = unet(noisy_latent_videos1, timesteps1, encoder_hidden_states, return_dict=False)[0]
+                noise_pred2 = unet(noisy_latent_videos2, timesteps2, encoder_hidden_states, return_dict=False)[0]
+                x_0_pred1 = predicted_original(noise_pred1, timesteps1, noisy_latent_videos1, alpha_schedule, sigma_schedule)
+                x_0_pred2 = predicted_original(noise_pred2, timesteps2, noisy_latent_videos2, alpha_schedule, sigma_schedule)
+                
+                loss = loss_fn(noise, noise_pred1, x_0_pred1, noise_pred2, x_0_pred2)
                 accelerator.backward(loss)
                 
                 accelerator.clip_grad_norm_(unet.parameters(), 1.0)

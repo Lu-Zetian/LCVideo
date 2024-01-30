@@ -1,0 +1,13 @@
+pretrains:
+  sd_pretrains_folder: pretrains/SD/stable-diffusion-v1-5/
+  lcm_pretrains_path: pretrains/LCM/lcm_lora_sd15.safetensors
+  lcvideo_checkpoint_path: checkpoints/lcvideo_unet.pth
+
+video:
+  prompt: Horse grazing - seperated on green screen
+  height: 512
+  width: 512
+  num_frames: 8
+  num_inference_steps: 10
+  video_fps: 8
+  output_path: samples/test.gif
