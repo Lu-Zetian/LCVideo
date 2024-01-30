@@ -5,9 +5,9 @@ pretrains:
 
 video:
   prompt: Horse grazing - seperated on green screen
-  height: 512
-  width: 512
+  height: 256
+  width: 256
   num_frames: 8
-  num_inference_steps: 10
+  num_inference_steps: 5
   video_fps: 8
   output_path: samples/test.gif

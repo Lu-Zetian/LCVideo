@@ -109,7 +109,7 @@ def main(args):
         num_warmup_steps=config.lr_warmup_steps,
         num_training_steps=(len(train_dataloader) * config.num_epochs),
     )
-    loss_fn = LCMLoss()
+    loss_fn = LCMLoss(lambda_=config.loss.lambda_)
     
     # Training Loop
     accelerator = Accelerator(
@@ -157,6 +157,8 @@ def main(args):
                 device=latent_videos.device,
                 dtype=torch.int64, 
             )
+            c_skip1, c_out1 = noise_scheduler.get_scalings_for_boundary_condition_discrete(timesteps1)
+            c_skip2, c_out2 = noise_scheduler.get_scalings_for_boundary_condition_discrete(timesteps2)
             noisy_latent_videos1 = noise_scheduler.add_noise(latent_videos, noise, timesteps1)
             noisy_latent_videos2 = noise_scheduler.add_noise(latent_videos, noise, timesteps2)
         
@@ -165,8 +167,10 @@ def main(args):
                 noise_pred2 = unet(noisy_latent_videos2, timesteps2, encoder_hidden_states, return_dict=False)[0]
                 x_0_pred1 = predicted_original(noise_pred1, timesteps1, noisy_latent_videos1, alpha_schedule, sigma_schedule)
                 x_0_pred2 = predicted_original(noise_pred2, timesteps2, noisy_latent_videos2, alpha_schedule, sigma_schedule)
+                pred1 = c_skip1 * noisy_latent_videos1 + c_out1 * x_0_pred1
+                pred2 = c_skip2 * noisy_latent_videos2 + c_out2 * x_0_pred2
                 
-                loss = loss_fn(noise, noise_pred1, x_0_pred1, noise_pred2, x_0_pred2)
+                loss = loss_fn(noise, noise_pred1, pred1, noise_pred2, pred2)
                 accelerator.backward(loss)
                 
                 accelerator.clip_grad_norm_(unet.parameters(), 1.0)
@@ -192,7 +196,7 @@ def main(args):
                 torch.save(state_dict, save_path)
     
     # Save model after training
-    save_path = os.path.join(config.output_dir, config.output_name)
+    save_path = os.path.join(config.output_dir, config.output_filename)
     state_dict = unet.state_dict()
     for param_tensor in unet.state_dict():
         if "frame_attentions" not in param_tensor:
