@@ -1,0 +1,12 @@
+diffusers
+transformers 
+accelerate
+xformers
+torch
+torchvision
+numpy
+decord
+einops
+imageio
+omegaconf
+tqdm
