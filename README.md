@@ -1,5 +1,9 @@
 # LCVideo
 
+### Environment
+
+We use Python 3.11.7 for this experiment, with Pytorch 2.1.2 and CUDA 12.2. 
+
 ### Set Up
 
 1. Create a new environment (recommended but not required)
@@ -10,6 +14,7 @@ conda create -n lcvideo python=3.11
 
 2. Install the library
 ```
+pip install -U pip
 pip install -r requirements.txt
 ```
 

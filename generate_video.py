@@ -40,7 +40,7 @@ def main(args):
         width=config.video.width,
         num_frames=config.video.num_frames,
         num_inference_steps=config.video.num_inference_steps, 
-        guidance_scale=0.0, 
+        guidance_scale=config.video.guidance_scale, 
         output_type="pt"
     ).frames
 

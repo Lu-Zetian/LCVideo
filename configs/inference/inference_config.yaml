@@ -9,5 +9,6 @@ video:
   width: 256
   num_frames: 8
   num_inference_steps: 5
+  guidance_scale: 1.
   video_fps: 8
   output_path: samples/test.gif
