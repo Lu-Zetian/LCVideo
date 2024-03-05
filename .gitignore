@@ -164,3 +164,4 @@ test.ipynb
 *.safetensors
 checkpoints/*
 samples/*
+custom_dataset/*
